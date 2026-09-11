@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -17,9 +17,10 @@ import {
   ParkingCircle,
   ShieldCheck,
 } from "lucide-react";
-import { mockListings, type Amenity } from "@nestin/shared";
+import type { Amenity, Listing } from "@nestin/shared";
 import { Header } from "@/components/header";
 import { useLanguage } from "@/lib/language-provider";
+import { ListingDetailSkeleton } from "@/components/listing-detail-skeleton";
 
 const AMENITY_ICONS: Record<Amenity, typeof Wifi> = {
   wifi: Wifi,
@@ -36,10 +37,26 @@ export default function ListingDetailPage({
 }) {
   const { id } = use(params);
   const { t } = useLanguage();
-  const listing = mockListings.find((l) => l.id === id);
+  const [listing, setListing] = useState<Listing | null | undefined>(undefined);
   const [activePhoto, setActivePhoto] = useState(0);
 
-  if (!listing) return notFound();
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/listing/${id}`)
+      .then((res) => res.json())
+      .then((data: { listing: Listing | null }) => {
+        if (!cancelled) setListing(data.listing);
+      })
+      .catch(() => {
+        if (!cancelled) setListing(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  if (listing === undefined) return <ListingDetailSkeleton />;
+  if (listing === null) return notFound();
 
   const amenityLabel: Record<Amenity, string> = {
     wifi: t.filters.amenityWifi,

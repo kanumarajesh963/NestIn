@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BadgeCheck, MapPin, Phone, Star } from "lucide-react";
+import { BadgeCheck, Building2, MapPin, Phone, Star } from "lucide-react";
 import type { Listing } from "@nestin/shared";
 import { useLanguage } from "@/lib/language-provider";
 import { fadeUp } from "@/lib/motion";
@@ -23,7 +23,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
     >
       <Link href={`/listing/${listing.id}`} className="block">
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-surface-muted">
-          {listing.photos[0] && (
+          {listing.photos[0] ? (
             <Image
               src={listing.photos[0]}
               alt={listing.name}
@@ -31,6 +31,10 @@ export function ListingCard({ listing }: { listing: Listing }) {
               sizes="(max-width: 768px) 100vw, 33vw"
               className="object-cover transition-transform duration-500 group-hover:scale-105"
             />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-foreground-muted">
+              <Building2 size={32} strokeWidth={1.5} />
+            </div>
           )}
           {listing.verified && (
             <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-accent-foreground shadow">

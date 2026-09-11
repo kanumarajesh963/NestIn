@@ -1,19 +1,60 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Loader2, MapPin, Search } from "lucide-react";
+import type { LocationSuggestion } from "@nestin/shared";
 import { useLanguage } from "@/lib/language-provider";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 
 export function Hero({
   query,
   onQueryChange,
-  onSearch,
+  onSelectSuggestion,
 }: {
   query: string;
   onQueryChange: (v: string) => void;
-  onSearch: () => void;
+  onSelectSuggestion: (suggestion: LocationSuggestion) => void;
 }) {
   const { t } = useLanguage();
+  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const debouncedQuery = useDebouncedValue(query, 300);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (debouncedQuery.trim().length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/autocomplete?q=${encodeURIComponent(debouncedQuery)}`)
+      .then((res) => res.json())
+      .then((data: { suggestions: LocationSuggestion[] }) => {
+        if (!cancelled) setSuggestions(data.suggestions ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setSuggestions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedQuery]);
 
   return (
     <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-surface-muted to-background px-4 py-16 sm:px-6 sm:py-24">
@@ -29,30 +70,53 @@ export function Hero({
         <p className="mx-auto mt-4 max-w-xl text-base text-foreground-muted sm:text-lg">
           {t.home.heroSubtitle}
         </p>
-        <motion.form
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.4 }}
-          onSubmit={(e) => {
-            e.preventDefault();
-            onSearch();
-          }}
-          className="mx-auto mt-8 flex max-w-xl items-center gap-2 rounded-full border border-border bg-surface p-1.5 pl-5 shadow-sm"
-        >
-          <Search size={18} className="shrink-0 text-foreground-muted" />
-          <input
-            value={query}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onQueryChange(e.target.value)}
-            placeholder={t.home.searchPlaceholder}
-            className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-foreground-muted"
-          />
-          <button
-            type="submit"
-            className="shrink-0 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 cursor-pointer"
-          >
-            {t.home.searchButton}
-          </button>
-        </motion.form>
+        <div ref={containerRef} className="relative mx-auto mt-8 max-w-xl">
+          <div className="flex items-center gap-2 rounded-full border border-border bg-surface p-1.5 pl-5 shadow-sm">
+            <Search size={18} className="shrink-0 text-foreground-muted" />
+            <input
+              value={query}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                onQueryChange(e.target.value);
+                setOpen(true);
+              }}
+              onFocus={() => setOpen(true)}
+              placeholder={t.home.searchPlaceholder}
+              className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-foreground-muted"
+            />
+            {loading && (
+              <Loader2 size={16} className="shrink-0 animate-spin text-foreground-muted" />
+            )}
+          </div>
+
+          <AnimatePresence>
+            {open && suggestions.length > 0 && (
+              <motion.ul
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.15 }}
+                className="absolute left-0 right-0 z-20 mt-2 overflow-hidden rounded-2xl border border-border bg-surface text-left shadow-lg"
+              >
+                {suggestions.map((s) => (
+                  <li key={s.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onQueryChange(s.label);
+                        onSelectSuggestion(s);
+                        setOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-surface-muted cursor-pointer"
+                    >
+                      <MapPin size={15} className="shrink-0 text-foreground-muted" />
+                      <span className="truncate">{s.label}</span>
+                    </button>
+                  </li>
+                ))}
+              </motion.ul>
+            )}
+          </AnimatePresence>
+        </div>
       </motion.div>
     </section>
   );
