@@ -66,9 +66,10 @@ export default function ListingDetailPage({
     security: t.filters.amenitySecurity,
   };
 
-  const whatsappHref = listing.phone
-    ? `https://wa.me/${listing.phone.replace(/[^\d]/g, "")}`
-    : undefined;
+  const whatsappHref =
+    typeof listing.phone === "string"
+      ? `https://wa.me/${listing.phone.replace(/[^\d]/g, "")}`
+      : undefined;
 
   return (
     <>

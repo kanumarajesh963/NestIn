@@ -10,9 +10,10 @@ import { fadeUp } from "@/lib/motion";
 
 export function ListingCard({ listing }: { listing: Listing }) {
   const { t } = useLanguage();
-  const whatsappHref = listing.phone
-    ? `https://wa.me/${listing.phone.replace(/[^\d]/g, "")}`
-    : undefined;
+  const whatsappHref =
+    typeof listing.phone === "string"
+      ? `https://wa.me/${listing.phone.replace(/[^\d]/g, "")}`
+      : undefined;
 
   return (
     <motion.div

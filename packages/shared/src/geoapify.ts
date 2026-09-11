@@ -46,9 +46,16 @@ interface GeoapifyPlaceFeature {
     lat: number;
     lon: number;
     categories?: string[];
-    contact?: { phone?: string };
-    phone?: string;
+    // Geoapify returns a plain string normally, but splits multi-value OSM
+    // tags (e.g. "phone=+91 1;+91 2") into an array — normalize both.
+    contact?: { phone?: string | string[] };
+    phone?: string | string[];
   };
+}
+
+function firstString(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value.find((v) => typeof v === "string" && v.trim());
+  return typeof value === "string" && value.trim() ? value : undefined;
 }
 
 function mapFeatureToListing(feature: GeoapifyPlaceFeature): Listing {
@@ -65,7 +72,7 @@ function mapFeatureToListing(feature: GeoapifyPlaceFeature): Listing {
     foodIncluded: false,
     amenities: [],
     verified: false,
-    phone: p.contact?.phone ?? p.phone,
+    phone: firstString(p.contact?.phone) ?? firstString(p.phone),
     source: "google_places",
   };
 }
